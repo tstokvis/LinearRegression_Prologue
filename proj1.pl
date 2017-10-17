@@ -112,3 +112,24 @@ point_dev([],[],A) :- A is 0.
 
 remove_head([[_|T]|T2], A) :- remove_head(T2,A2), A = [T|A2].
 remove_head([[_|T]|[]], A) :- A = [T].
+
+% ---------------------------------------------
+% Matrix transpose (and helpers)
+%
+% transpose(M,T). is true if T is the transpose of M.
+% ---------------------------------------------
+
+% Break up matrix by row
+transpose([],[]).
+transpose([FirstRow|Rows], Transpose) :- 
+    transpose(FirstRow, [FirstRow|Rows], Transpose).
+
+% Send empty matrix with row and build columns
+transpose([], _, []).
+transpose([_|Rows], All, [NextRowT|RestT]) :- 
+    next_column(All, NextRowT, Result), transpose(Rows, Result, RestT).
+
+% Accumulate elements into the column lists for each element in the row
+next_column([],[],[]).
+next_column([[Element|Row]|Rows], [Element|Acc], [Row|Rest]) :- 
+    next_column(Rows, Acc, Rest).

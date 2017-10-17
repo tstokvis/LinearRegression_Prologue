@@ -1,10 +1,27 @@
 % predict([X_hat]. [[Dataset]], Y_hat).
 % X_hat * linear_regress([[Dataset]]) = Y_hat.
-% Linear Regression: B = inv(trans(X)*X) * trans(X) * y
+% Linear Regression: B = inv(transpose(X)*X) * trans(X) * y
+% Ridge Regression : B = inv(transpose(X)*X + LAM*I) * transpose(X)*y
 % B*x = y
 
 % -----------------------------------
+%	Predict 
 %
+%
+%
+% -----------------------------------
+
+regress_lm(RAW, Y, ANS) :- add_intercept(RAW, X), transpose(X, TRANS_X), mmul(TRANS_X, X, SQUARE_X), inv(SQUARE_X, INV_Sq_X), mmul(TRANS_X, Y, By), mmul(INV_Sq_X, By, ANS).
+regress_rr(RAW, Y, LAMBDA, ANS) :- add_intercept(RAW, X), transpose(X, TRANS_X), mmul(TRANS_X, X, SQUARE_X), ncols(SQUARE_X, SIZE), eye(SIZE, I), scalar_mmul(LAMBDA, I, LAM_I), matrix_add(SQUARE_X, LAM_I, RR_X), inv(RR_X, INV_Sq_X), mmul(TRANS_X, Y, By), mmul(INV_Sq_X, By, ANS).
+
+predict_lm(X_hat, DATA_x, DATA_y, ANS) :- \+number(DATA_y), regress_lm(DATA_x, DATA_y, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
+predict_lm(X_hat, DATA, Num, ANS) :- number(Num), remove_column(Num, DATA, DATA_x), column(Num, DATA, DATA_y), predict_lm(X_hat, DATA_x, DATA_y, ANS).
+predict_lm(X_hat, DATA, ANS) :- ncols(DATA, N), remove_column(N, DATA, DATA_x), column(N, DATA, DATA_y), predict_lm(X_hat, DATA_x, DATA_y, ANS).
+predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS) :- \+number(DATA_y), regress_rr(DATA_x, DATA_y, LAMBDA, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
+predict_rr(X_hat, DATA, Num, LAMBDA, ANS) :- number(Num), remove_column(Num, DATA, DATA_x), column(Num, DATA, DATA_y), predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS).
+predict_rr(X_hat, DATA, LAMBDA, ANS) :- ncols(DATA, N), remove_column(N, DATA, DATA_x), column(N, DATA, DATA_y), predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS).
+
+% -----------------------------------
 %	VARIABLES
 %
 % -----------------------------------
@@ -37,25 +54,51 @@ remove_column(N, [H|T], ANS) :- remove_column_from_row(N,H,1,ANS1), remove_colum
 remove_column_from_row(N, [_|T], Current, ANS) :- \+dif(N,Current), ANS = T.
 remove_column_from_row(N, [H|T], Current, ANS) :- dif(N,Current), Next is Current+1, remove_column_from_row(N,T,Next,ANS1), ANS = [H|ANS1].
 
+% column(N, X, ANS) --> returns the specified column
+column(N, X, ANS) :- ncols(X, NCOLS), column_helper(N, NCOLS, 1, X, 0, ANS).
+column_helper(N, SIZE, ACC, X, 0, ANS) :- dif(ACC, N), Next is ACC+1, remove_column(1, X, Trim), column_helper(N, SIZE, Next, Trim, 0, ANS).
+column_helper(N, SIZE, N, X, 0, ANS) :-  Next is N+1, column_helper(N, SIZE, Next, X, 1, ANS).
+column_helper(N, SIZE, ACC, X, 1, ANS) :- dif(ACC, N), dif(N, SIZE), Next is ACC+1, remove_column(2, X, Trim), column_helper(N, SIZE, Next, Trim, 1, ANS).
+column_helper(_, SIZE, SIZE, X, 1, ANS) :- remove_column(2, X, ANS).
+column_helper(SIZE, SIZE, SIZE, X, 0, ANS) :- ANS = X.
+
 % remove_row(N, X, ANS) --> removes row N from matrix X
 remove_row(N, X, ANS) :- remove_row_helper(N, 1, X, ANS1), ANS = ANS1.
 remove_row_helper(N, N, [_|[]], ANS) :- ANS = [].
 remove_row_helper(N, N, [_|T], ANS) :- \+atomic(T), ANS = T.
 remove_row_helper(N, CURR, [H|T], ANS) :- dif(CURR, N), NEXT is CURR+1, remove_row_helper(N, NEXT, T, ANS1), ANS = [H|ANS1]. 
 
+% eye(N, ANS) ---> creates a NxN identity matrix
+eye(N, ANS) :- number(N), eye_columns(1, N, I), ANS = I.
+eye_columns(CURR, SIZE, ANS) :- dif(CURR, SIZE), eye_row(CURR, 1, SIZE, ROW), NEXT is CURR + 1, eye_columns(NEXT, SIZE, REST), ANS = [ROW|REST].
+eye_columns(SIZE, SIZE, ANS) :- eye_row(SIZE, 1, SIZE, ROW), ANS = [ROW].
+eye_row(PIVOT, CURR, SIZE, ANS) :- dif(PIVOT, CURR), dif(SIZE, CURR), NEXT is CURR + 1, eye_row(PIVOT, NEXT, SIZE, REST), ANS = [0|REST].
+eye_row(CURR, CURR, SIZE, ANS) :- dif(SIZE, CURR), NEXT is CURR + 1, eye_row(CURR, NEXT, SIZE, REST), ANS = [1|REST].
+eye_row(PIVOT, CURR, CURR, ANS) :- dif(PIVOT, CURR), ANS = [0].
+eye_row(CURR, CURR, CURR, ANS) :- ANS = [1].
+
+% matrix_add(X,Y,ANS) ---> ANS is X + Y
+matrix_add([X|XT],[Y|YT], ANS) :- matrix_add_row(X,Y,ROW), matrix_add(XT,YT,REST), ANS = [ROW|REST].
+matrix_add([X|[]],[Y|[]], ANS) :- matrix_add_row(X,Y,ROW), ANS = [ROW].
+matrix_add_row([XH|XT],[YH|YT], ANS) :- H is XH + YH, matrix_add_row(XT,YT,T), ANS = [H|T]. 
+matrix_add_row([XH|[]],[YH|[]], ANS) :- H is XH + YH, ANS = [H].
+
+% add_intercept(X, ANS) --> adds one to the first element of each row
+add_intercept([H|T], ANS) :- HO = [1|H], add_intercept(T,REST), ANS = [HO|REST].
+add_intercept([H|[]], ANS) :- ANS = [[1|H]].
 
 % ---------------------------------------------
 % Inverse of a Matrix
 % inv(X, ANS):
 %	- X is a lists of list of numbers, representing a matrix
-%	- ANS is the 
+%	- ANS is the inverse
 %
 % NOTE: If Matrix is singular then an "Arithmetic: evaluation error: 'zero_divisor'"  error will be thrown
 % ----------------------------------------------
 
-inv([H|[]], ANS) :- ANS = [H].
+inv([H|[]], ANS) :- ANS = [1/H].
 inv([[H1|[T1]],[H2|[T2]]], ANS) :- atomic(H1), atomic(T1), atomic(H2), atomic(T2), NT1 is (-1*T1), NH2 is (-1*H2), X = [[T2, NT1],[NH2, H1]], det([[H1,T1],[H2,T2]], DET), scalar_mmul(1/DET, X, ANS1), ANS = ANS1.
-inv(X, ANS) :- ncols(X, NCOLS), NCOLS>2, mirror_matrix(X, M_ANS), ANS = M_ANS.
+inv(X, ANS) :- ncols(X, NCOLS), NCOLS>2, mirror_matrix(X, M_ANS), transpose(M_ANS, INV_ANS), det(X, Det), scalar_mmul(1/Det, INV_ANS, ANS).
 
 % Step 1: Mirror the Matrix.
 mirror_matrix(X, ANS) :- mirror_matrix_helper(X, X, 1, 1, ANS).
@@ -68,10 +111,6 @@ mirror_row([_|T], ROW_NUM, COL_NUM, 1, FullMatrix, ANS) :- remove_col_and_row(RO
 mirror_row([_|T], ROW_NUM, COL_NUM, 0, FullMatrix, ANS) :- remove_col_and_row(ROW_NUM, COL_NUM, FullMatrix, TrimmedMatrix), det(TrimmedMatrix, DET), NEXT_COL is COL_NUM+1, mirror_row(T, ROW_NUM, NEXT_COL, 1, FullMatrix, ANS1), NEG_DET is -1*DET, ANS = [NEG_DET|ANS1].
 mirror_row([_|[]], ROW_NUM, COL_NUM, 1, FullMatrix, ANS) :- remove_col_and_row(ROW_NUM, COL_NUM, FullMatrix, TrimmedMatrix), det(TrimmedMatrix, DET), ANS = [DET].
 mirror_row([_|[]], ROW_NUM, COL_NUM, 0, FullMatrix, ANS) :- remove_col_and_row(ROW_NUM, COL_NUM, FullMatrix, TrimmedMatrix), det(TrimmedMatrix, DET), NEG_DET is -1*DET, ANS = [NEG_DET].
-
-% Step 2: Adjugate.
-
-
 
 % ---------------------------------------------
 % Determinate of a Matrix 

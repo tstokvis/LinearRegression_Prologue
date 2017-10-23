@@ -17,7 +17,7 @@ regress_rr(RAW, Y, LAMBDA, ANS) :- add_intercept(RAW, X), transpose(X, TRANS_X),
 predict_lm(X_hat, DATA_x, DATA_y, ANS) :- \+number(DATA_y), regress_lm(DATA_x, DATA_y, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
 predict_lm(X_hat, DATA, Num, ANS) :- number(Num), remove_column(Num, DATA, DATA_x), column(Num, DATA, DATA_y), predict_lm(X_hat, DATA_x, DATA_y, ANS).
 predict_lm(X_hat, DATA, ANS) :- ncols(DATA, N), remove_column(N, DATA, DATA_x), column(N, DATA, DATA_y), predict_lm(X_hat, DATA_x, DATA_y, ANS).
-predict_lm(X_hat, DATA_x, DATA_y, ANS, N) :- number(N), remove_row(N, DATA_x, N_DATA_x), \+number(DATA_y), regress_lm(N_DATA_x, DATA_y, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
+predict_lm(X_hat, DATA_x, DATA_y, ANS, N) :- number(N), remove_row(N, DATA_x, N_DATA_x), row(N, DATA_x, X_hat), \+number(DATA_y), regress_lm(N_DATA_x, DATA_y, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
 predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS) :- \+number(DATA_y), regress_rr(DATA_x, DATA_y, LAMBDA, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
 predict_rr(X_hat, DATA, Num, LAMBDA, ANS) :- number(Num), remove_column(Num, DATA, DATA_x), column(Num, DATA, DATA_y), predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS).
 predict_rr(X_hat, DATA, LAMBDA, ANS) :- ncols(DATA, N), remove_column(N, DATA, DATA_x), column(N, DATA, DATA_y), predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS).
@@ -68,6 +68,10 @@ remove_row(N, X, ANS) :- remove_row_helper(N, 1, X, ANS1), ANS = ANS1.
 remove_row_helper(N, N, [_|[]], ANS) :- ANS = [].
 remove_row_helper(N, N, [_|T], ANS) :- \+atomic(T), ANS = T.
 remove_row_helper(N, CURR, [H|T], ANS) :- dif(CURR, N), NEXT is CURR+1, remove_row_helper(N, NEXT, T, ANS1), ANS = [H|ANS1]. 
+
+% row(N, X, ANS) --> returns the specified row
+row(1, [H|_], H).
+row(N, [H|T], ANS) :- N1 is N-1, row(N1, T, ANS).
 
 % eye(N, ANS) ---> creates a NxN identity matrix
 eye(N, ANS) :- number(N), eye_columns(1, N, I), ANS = I.

@@ -71,7 +71,7 @@ remove_row_helper(N, CURR, [H|T], ANS) :- dif(CURR, N), NEXT is CURR+1, remove_r
 
 % row(N, X, ANS) --> returns the specified row
 row(1, [H|_], H).
-row(N, [H|T], ANS) :- N1 is N-1, row(N1, T, ANS).
+row(N, [_|T], ANS) :- N1 is N-1, row(N1, T, ANS).
 
 % eye(N, ANS) ---> creates a NxN identity matrix
 eye(N, ANS) :- number(N), eye_columns(1, N, I), ANS = I.
@@ -132,7 +132,8 @@ det(X, ANS) :- ncols(X,NCOLS), NCOLS>2, det_large(X, 1, 1, ANS).
 
 det_large([[H|T]|FT], 1, ACC, ANS) :- ACC2 is ACC+1, det_large([T|FT], 0, ACC2, ANS2), remove_column(ACC, FT, SUB), det(SUB,ANS1), ANS is (H*ANS1)+ANS2.
 det_large([[H|T]|FT], 0, ACC, ANS) :- ACC2 is ACC+1, det_large([T|FT], 1, ACC2, ANS2), remove_column(ACC, FT, SUB), det(SUB,ANS1), ANS is (-1*H*ANS1)+ANS2.
-det_large([[H|[]]|FT], _, ACC, ANS) :- remove_column(ACC, FT, SUB), det(SUB,ANS1), ANS is H*ANS1.
+det_large([[H|[]]|FT], 1, ACC, ANS) :- atomic(H), remove_column(ACC, FT, SUB), det(SUB,ANS1), ANS is H*ANS1.
+det_large([[H|[]]|FT], 0, ACC, ANS) :- atomic(H), remove_column(ACC, FT, SUB), det(SUB,ANS1), ANS is (-1*H*ANS1).
 
 
 % ---------------------------------------------

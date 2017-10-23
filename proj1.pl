@@ -16,11 +16,18 @@ regress_rr(RAW, Y, LAMBDA, ANS) :- add_intercept(RAW, X), transpose(X, TRANS_X),
 
 predict_lm(X_hat, DATA_x, DATA_y, ANS) :- \+number(DATA_y), regress_lm(DATA_x, DATA_y, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
 predict_lm(X_hat, DATA, Num, ANS) :- number(Num), remove_column(Num, DATA, DATA_x), column(Num, DATA, DATA_y), predict_lm(X_hat, DATA_x, DATA_y, ANS).
-predict_lm(X_hat, DATA, ANS) :- ncols(DATA, N), remove_column(N, DATA, DATA_x), column(N, DATA, DATA_y), predict_lm(X_hat, DATA_x, DATA_y, ANS).
 predict_lm(X_hat, DATA_x, DATA_y, ANS, N) :- number(N), remove_row(N, DATA_x, N_DATA_x), row(N, DATA_x, X_hat), \+number(DATA_y), regress_lm(N_DATA_x, DATA_y, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
+predict_lm(X_hat, DATA, ANS) :- ncols(DATA, N), remove_column(N, DATA, DATA_x), column(N, DATA, DATA_y), predict_lm(X_hat, DATA_x, DATA_y, ANS).
+predict_lm(X_hat, simple, ANS) :- dataset(simple, X), predict_lm(X_hat, X, ANS).
+predict_lm(X_hat, binary, ANS) :- dataset(binary, X), predict_lm(X_hat, X, ANS).
+predict_lm(X_hat, cars, ANS) :- dataset(cars, X), predict_lm(X_hat, X, ANS).
+
 predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS) :- \+number(DATA_y), regress_rr(DATA_x, DATA_y, LAMBDA, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
 predict_rr(X_hat, DATA, Num, LAMBDA, ANS) :- number(Num), remove_column(Num, DATA, DATA_x), column(Num, DATA, DATA_y), predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS).
 predict_rr(X_hat, DATA, LAMBDA, ANS) :- ncols(DATA, N), remove_column(N, DATA, DATA_x), column(N, DATA, DATA_y), predict_rr(X_hat, DATA_x, DATA_y, LAMBDA, ANS).
+predict_rr(X_hat, simple, LAMBDA, ANS) :- dataset(simple, X), predict_rr(X_hat, X, LAMBDA, ANS).
+predict_rr(X_hat, binary, LAMBDA, ANS) :- dataset(binary, X), predict_rr(X_hat, X, LAMBDA, ANS).
+predict_rr(X_hat, cars, LAMBDA, ANS) :- dataset(cars, X), predict_rr(X_hat, X, LAMBDA, ANS).
 
 % -----------------------------------
 %	VARIABLES
@@ -178,3 +185,11 @@ transpose([_|Rows], All, [NextRowT|RestT]) :-
 next_column([],[],[]).
 next_column([[Element|Row]|Rows], [Element|Acc], [Row|Rest]) :- 
     next_column(Rows, Acc, Rest).
+	
+% ---------------------------------------------
+%  Datasets used as examples
+% ---------------------------------------------
+	
+dataset(simple, A) :- A = [[0,0,3],[1,0,4],[0,1,2]].
+dataset(binary, A) :- A = [[0,0,0,0,0],[0,0,0,1,1],[0,0,1,0,2],[0,1,0,0,4],[1,0,0,0,8]].
+dataset(cars, A) :- A = [[4,5,140,15.9],[6,5,200,33.9],[6,5,172,29.1],[6,6,172,37.7],[4,4,208,30],[4,6,110,15.7],[6,6,170,20.8],[6,6,180,23.7],[6,5,170,26.3],[8,6,200,34.7],[8,5,295,40.1],[4,5,110,13.4],[4,5,110,11.4],[6,4,160,15.1],[4,6,110,15.9],[6,7,170,16.3],[6,8,165,16.6],[8,6,170,18.8],[8,2,300,38],[6,6,153,18.4],[4,6,141,15.8],[6,6,147,29.5],[4,5,92,9.2],[4,5,93,11.3],[4,6,100,13.3],[6,7,142,19],[4,6,100,15.6],[6,4,300,25.8],[4,5,92,12.2],[6,6,214,19.3],[4,4,63,7.4],[4,5,127,10.1],[4,5,96,11.3],[4,4,105,15.9],[4,4,115,14],[6,7,145,19.9],[6,5,140,20.2],[8,6,190,20.9],[3,4,55,8.4],[4,4,90,12.5],[4,4,160,19.8],[4,4,102,12.1],[4,4,140,17.5],[4,5,81,8],[4,5,124,10],[4,4,92,10],[4,5,128,13.9],[8,5,278,47.9],[6,5,185,28],[6,4,225,35.2],[6,6,160,34.3],[8,6,210,36.1],[4,4,82,8.3],[4,5,103,11.6],[4,5,164,16.5],[6,7,155,19.1],[4,5,130,31.9],[6,5,217,61.9],[4,4,100,14.1],[6,5,140,14.9],[4,5,92,10.3],[6,5,202,26.1],[4,5,110,11.8],[4,5,150,15.7],[6,7,151,19.1],[6,5,160,21.5],[4,5,155,13.5],[4,5,110,16.3],[6,7,170,19.5],[6,6,170,20.7],[4,4,92,14.4],[4,4,74,9],[4,5,110,11.1],[6,4,160,17.7],[6,5,200,18.5],[6,6,170,24.4],[4,5,140,28.7],[4,5,85,11.1],[3,4,73,8.4],[4,5,90,10.9],[4,5,130,19.5],[3,4,70,8.6],[4,5,82,9.8],[4,4,135,18.4],[4,5,130,18.2],[4,7,138,22.7],[4,4,81,9.1],[5,7,109,19.7],[4,5,134,20],[6,4,178,23.3],[4,5,114,22.7],[5,5,168,26.7]].

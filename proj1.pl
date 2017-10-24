@@ -1,13 +1,20 @@
 
 % -----------------------------------
 %	Predict 
+%	
+% 	Linear Prediction Definitions:
+%	predict_lm(X_hat, DATA, ANS) - Assumes the last column in DATA is the response variable
+%	predict_lm(X_hat, DATA_x, DATA_y, ANS) - Data_x are the covariates, DATA_y is the response variable
+%	predict_lm(X_hat, DATA, Number, ANS) - Number supplied is the column of the response variable in DATA, other columns are the covariates.
+%	predict_lm(X_hat, simple, ANS) - Prediction using the simple dataset.
+%	predict_lm(X_hat, binary, ANS) - ANS is the decimal value of the 4-bit X_hat binary representation.
+%	predict_lm(X_hat, cars, ANS) - Prediction using the cars dataset ([Number of Cylinders, Number of Passengers, Horsepower, MSRP (USD, in thousands)]).
 %
-%
+% 	Ridge Regression Definitions:
+% 	predict_rr(X_hat, Data, Lambda, ANS) - Similar to Linear Prediction, but Lambda bias added.
+%										 - Ridge Regresion defintion options the same as simple Linear, but with Lambda added before ANS.						
 %
 % -----------------------------------
-
-regress_lm(RAW, Y, ANS) :- add_intercept(RAW, X), transpose(X, TRANS_X), mmul(TRANS_X, X, SQUARE_X), inv(SQUARE_X, INV_Sq_X), mmul(TRANS_X, Y, By), mmul(INV_Sq_X, By, ANS).
-regress_rr(RAW, Y, LAMBDA, ANS) :- add_intercept(RAW, X), transpose(X, TRANS_X), mmul(TRANS_X, X, SQUARE_X), ncols(SQUARE_X, SIZE), eye(SIZE, I), scalar_mmul(LAMBDA, I, LAM_I), matrix_add(SQUARE_X, LAM_I, RR_X), inv(RR_X, INV_Sq_X), mmul(TRANS_X, Y, By), mmul(INV_Sq_X, By, ANS).
 
 predict_lm(X_hat, DATA_x, DATA_y, ANS) :- \+number(DATA_y), regress_lm(DATA_x, DATA_y, [[INTERCEPT]|BETAS]), mmul([X_hat], BETAS, [[ANS_NOBIAS]]), ANS is ANS_NOBIAS + INTERCEPT.
 predict_lm(X_hat, DATA, Num, ANS) :- number(Num), remove_column(Num, DATA, DATA_x), column(Num, DATA, DATA_y), predict_lm(X_hat, DATA_x, DATA_y, ANS).
@@ -23,6 +30,17 @@ predict_rr(X_hat, DATA, LAMBDA, ANS) :- ncols(DATA, N), remove_column(N, DATA, D
 predict_rr(X_hat, simple, LAMBDA, ANS) :- dataset(simple, X), predict_rr(X_hat, X, LAMBDA, ANS).
 predict_rr(X_hat, binary, LAMBDA, ANS) :- dataset(binary, X), predict_rr(X_hat, X, LAMBDA, ANS).
 predict_rr(X_hat, cars, LAMBDA, ANS) :- dataset(cars, X), predict_rr(X_hat, X, LAMBDA, ANS).
+
+% regress_lm(X, Y, ANS) - ANS is a (d+1)x1 list of a list of a single Number representing the Betas in the regression function. 
+%					  	  - Intercept is the first item in the list
+
+regress_lm(RAW, Y, ANS) :- add_intercept(RAW, X), transpose(X, TRANS_X), mmul(TRANS_X, X, SQUARE_X), inv(SQUARE_X, INV_Sq_X), mmul(TRANS_X, Y, By), mmul(INV_Sq_X, By, ANS).
+
+% regress_rr(RAW, Y, LAMBDA, ANS) - ANS is a (d+1)x1 list of a list of a single Number representing the Betas in the regression function. Intercept is the first item in the list. 
+%								  - Intercept is the first item in the list
+%					   			 - NOTE: Regularization added of LAMBDA along the diagonal of X'X
+
+regress_rr(RAW, Y, LAMBDA, ANS) :- add_intercept(RAW, X), transpose(X, TRANS_X), mmul(TRANS_X, X, SQUARE_X), ncols(SQUARE_X, SIZE), eye(SIZE, I), scalar_mmul(LAMBDA, I, LAM_I), matrix_add(SQUARE_X, LAM_I, RR_X), inv(RR_X, INV_Sq_X), mmul(TRANS_X, Y, By), mmul(INV_Sq_X, By, ANS).
 
 % -----------------------------------
 %
@@ -100,7 +118,6 @@ add_intercept([H|[]], ANS) :- ANS = [[1|H]].
 inv([H|[]], ANS) :- ANS = [1/H].
 inv([[H1|[T1]],[H2|[T2]]], ANS) :- atomic(H1), atomic(T1), atomic(H2), atomic(T2), NT1 is (-1*T1), NH2 is (-1*H2), X = [[T2, NT1],[NH2, H1]], det([[H1,T1],[H2,T2]], DET), scalar_mmul(1/DET, X, ANS1), ANS = ANS1.
 inv(X, ANS) :- ncols(X, NCOLS), NCOLS>2, mirror_matrix(X, M_ANS), transpose(M_ANS, INV_ANS), det(X, Det), scalar_mmul(1/Det, INV_ANS, ANS).
-
 
 mirror_matrix(X, ANS) :- mirror_matrix_helper(X, X, 1, 1, ANS).
 mirror_matrix_helper([H|T], X, ROW_NUM, 1, ANS) :- mirror_row(H, ROW_NUM, 1, 1, X, ROW_ANS), NEW_ROW is ROW_NUM+1, mirror_matrix_helper(T, X, NEW_ROW, 0, REST), ANS = [ROW_ANS|REST].
